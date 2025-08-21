@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Donation Receipt Processor</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <style>
+    /* Enhanced CSS */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f9fc;
+      color: #333;
+      line-height: 1.6;
+    }
+    .container {
+      background: white;
+      border-radius: 10px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #7f8c8d;
+      margin-bottom: 30px;
+    }
+    
+    /* Mode Selection */
+    .mode-selection {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 30px;
+      justify-content: center;
+    }
+    .mode-btn {
+      padding: 12px 24px;
+      border: 2px solid #3498db;
+      background: white;
+      color: #3498db;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .mode-btn.active {
+      background: #3498db;
+      color: white;
+    }
+    .mode-btn:hover:not(.active) {
+      background: #e8f4fe;
+    }
+    
+    /* Mode Sections */
+    .mode-section {
+      display: none;
+    }
+    .mode-section.active {
+      display: block;
+    }
+    
+    .upload-area {
+      border: 2px dashed #3498db;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      margin-bottom: 25px;
+      background: #e8f4fe;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upload-area:hover {
+      background: #d6eaf8;
+      border-color: #2980b9;
+    }
+    .upload-area p {
+      font-size: 18px;
+      color: #3498db;
+      margin: 0;
+    }
+    .upload-icon {
+      font-size: 48px;
+      color: #3498db;
+      margin-bottom: 15px;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .progress-container {
+      margin: 30px 0;
+      background: #ecf0f1;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 20px;
+      background: #2ecc71;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .status-text {
+      text-align: center;
+      font-size: 16px;
+      margin: 10px 0;
+      color: #34495e;
+    }
+    .results-container {
+      margin-top: 30px;
+      padding: 25px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    .form-row-three {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      box-sizing: border-box;
+      transition: border-color 0.3s;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: #3498db;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+    .address-preview {
+      background-color: #e9f7ef;
+      border: 1px solid #c3e6cb;
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      font-size: 14px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    /* Contact Method Selection */
+    .contact-method {
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .contact-method:hover {
+      border-color: #3498db;
+      background: #f8f9fa;
+    }
+    .contact-method.selected {
+      border-color: #3498db;
+      background: #e8f4fe;
+    }
+    .contact-method input[type="radio"] {
+      width: auto;
+      margin-right: 10px;
+    }
+    .contact-method-title {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 5px;
+    }
+    .contact-method-desc {
+      color: #7f8c8d;
+      font-size: 14px;
+    }
+    .contact-fields {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #e0e0e0;
+      display: none;
+    }
+    .contact-fields.active {
+      display: block;
+    }
+    
+    .btn {
+      display: inline-block;
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      width: 100%;
+      transition: background 0.3s;
+      margin-top: 10px;
+    }
+    .btn:hover {
+      background: #2980b9;
+    }
+    .btn:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+    .btn-success {
+      background: #27ae60;
+    }
+    .btn-success:hover:not(:disabled) {
+      background: #219653;
+    }
+    .btn-secondary {
+      background: #95a5a6;
+    }
+    .btn-secondary:hover {
+      background: #7f8c8d;
+    }
+    .success-message {
+      text-align: center;
+      padding: 30px;
+      background: #e9f7ef;
+      border-radius: 8px;
+      border: 1px solid #c3e6cb;
+    }
+    .success-icon {
+      font-size: 48px;
+      color: #27ae60;
+      margin-bottom: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    .instructions {
+      background: #fef9e7;
+      border-left: 4px solid #f1c40f;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 0 6px 6px 0;
+    }
+    .instructions h3 {
+      margin-top: 0;
+      color: #d35400;
+    }
+    .instructions ol {
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin-bottom: 10px;
+    }
+    .format-info {
+      background: #e8f4fe;
+      border-left: 4px solid #3498db;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 0 6px 6px 0;
+    }
+    .format-info h3 {
+      margin-top: 0;
+      color: #2980b9;
+    }
+    .format-list {
+      padding-left: 20px;
+    }
+    .format-list li {
+      margin-bottom: 8px;
+    }
+    
+    /* Manual Entry Styling */
+    .manual-form {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 25px;
+      border: 1px solid #e0e0e0;
+    }
+    .manual-form h2 {
+      color: #2c3e50;
+      margin-top: 0;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+    
+    .info-box {
+      background: #e8f4fe;
+      border-left: 4px solid #3498db;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 6px 6px 0;
+    }
+    .info-box h4 {
+      margin-top: 0;
+      color: #2980b9;
+    }
+    .info-box p {
+      margin-bottom: 0;
+      color: #34495e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Donation Receipt Processor</h1>
+    <p class="subtitle">Choose your preferred method to process donation receipts</p>
+    
+    <!-- Mode Selection -->
+    <div class="mode-selection">
+      <button class="mode-btn active" data-mode="scan">📄 Scan Document</button>
+      <button class="mode-btn" data-mode="manual">✍️ Manual Entry</button>
+    </div>
+    
+    <!-- Scan Mode -->
+    <div id="scanMode" class="mode-section active">
+      <div class="instructions">
+        <h3>How to scan:</h3>
+        <ol>
+          <li>Scan the donation letter as a JPG or PNG file</li>
+          <li>Upload the image using the area below</li>
+          <li>Review the extracted information (edit if needed)</li>
+          <li>Choose how to deliver the receipt (email to donor or mail to address)</li>
+          <li>Click "Generate Receipt" to create and send the donation receipt</li>
+        </ol>
+      </div>
+      
+      <div class="format-info">
+        <h3>Supported Formats:</h3>
+        <ul class="format-list">
+          <li><strong>Fidelity Charitable</strong> (with "send it to the following address")</li>
+          <li><strong>DAFgiving360</strong> (with "Acknowledgment" and "Address" sections)</li>
+          <li>Other formats with donor name, amount, date, and address</li>
+        </ul>
+      </div>
+      
+      <div id="uploadArea" class="upload-area">
+        <div class="upload-icon">📄</div>
+        <p>Drag & drop a scanned donation letter here or click to browse</p>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+      
+      <div id="progressContainer" class="hidden">
+        <div class="progress-container">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <p id="statusText" class="status-text">Processing image...</p>
+      </div>
+    </div>
+    
+    <!-- Manual Mode -->
+    <div id="manualMode" class="mode-section">
+      <div class="manual-form">
+        <h2>Manual Entry</h2>
+        
+        <div class="info-box">
+          <h4>📝 Manual Receipt Generation</h4>
+          <p>Enter donation information manually. You can choose to either email the receipt directly to the donor or generate it for mailing to their address.</p>
+        </div>
+        
+        <form id="manualForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="manualDonorName">Donor Name:</label>
+              <input type="text" id="manualDonorName" name="donorName" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="manualDonationAmount">Donation Amount:</label>
+              <input type="text" id="manualDonationAmount" name="donationAmount" placeholder="e.g., 100.00" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="manualDonationDate">Donation Date:</label>
+            <input type="date" id="manualDonationDate" name="donationDate" required>
+          </div>
+          
+          <!-- Contact Method Selection -->
+          <div class="form-group">
+            <label>How should we deliver this receipt?</label>
+            
+            <div class="contact-method" data-method="email">
+              <input type="radio" id="contactEmail" name="contactMethod" value="email">
+              <label for="contactEmail" class="contact-method-title">📧 Email to Donor</label>
+              <div class="contact-method-desc">Send receipt directly to donor's email address</div>
+              <div class="contact-fields">
+                <label for="manualDonorEmail">Donor Email Address:</label>
+                <input type="email" id="manualDonorEmail" name="donorEmail" placeholder="donor@example.com">
+              </div>
+            </div>
+            
+            <div class="contact-method" data-method="mail">
+              <input type="radio" id="contactMail" name="contactMethod" value="mail">
+              <label for="contactMail" class="contact-method-title">📮 Mail to Address</label>
+              <div class="contact-method-desc">Generate receipt for mailing to donor's address</div>
+              <div class="contact-fields">
+                <label for="manualDonorAddress">Donor Address:</label>
+                <textarea id="manualDonorAddress" name="donorAddress" rows="3" placeholder="Full mailing address"></textarea>
+                
+                <label for="manualRecipientEmail">Send Receipt To (Organization Email):</label>
+                <input type="email" id="manualRecipientEmail" name="recipientEmail" value="shannon@havensafe.org">
+              </div>
+            </div>
+          </div>
+          
+          <button type="button" id="generateManualReceipt" class="btn btn-success">Generate & Send Receipt</button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Results Container (for both modes) -->
+    <div id="resultsContainer" class="results-container hidden">
+      <h2>Extracted Information</h2>
+      <p>Review the information below and make corrections if needed:</p>
+      
+      <form id="donationForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="donorName">Donor Name:</label>
+            <input type="text" id="donorName" name="donorName" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="donationAmount">Donation Amount:</label>
+            <input type="text" id="donationAmount" name="donationAmount" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="donationDate">Donation Date:</label>
+          <input type="text" id="donationDate" name="donationDate" required>
+        </div>
+        
+        <div class="form-group">
+          <label>How should we deliver this receipt?</label>
+          
+          <div class="contact-method" data-method="email">
+            <input type="radio" id="scannedContactEmail" name="scannedContactMethod" value="email">
+            <label for="scannedContactEmail" class="contact-method-title">📧 Email to Donor</label>
+            <div class="contact-method-desc">Send receipt directly to donor's email address</div>
+            <div class="contact-fields">
+              <label for="donorEmail">Donor Email Address:</label>
+              <input type="email" id="donorEmail" name="donorEmail" placeholder="donor@example.com">
+            </div>
+          </div>
+          
+          <div class="contact-method" data-method="mail">
+            <input type="radio" id="scannedContactMail" name="scannedContactMethod" value="mail">
+            <label for="scannedContactMail" class="contact-method-title">📮 Mail to Address</label>
+            <div class="contact-method-desc">Generate receipt for mailing to donor's address</div>
+            <div class="contact-fields">
+              <div class="address-preview" id="addressPreview">Address context will appear here...</div>
+              <label for="donorAddress">Donor Address:</label>
+              <textarea id="donorAddress" name="donorAddress" rows="3" placeholder="Enter full mailing address"></textarea>
+              
+              <label for="recipientEmail">Send Receipt To (Organization Email):</label>
+              <input type="email" id="recipientEmail" name="recipientEmail" value="shannon@havensafe.org">
+            </div>
+          </div>
+        </div>
+        
+        <button type="button" id="generateReceipt" class="btn btn-success">Generate & Send Receipt</button>
+      </form>
+    </div>
+    
+    <div id="successMessage" class="success-message hidden">
+      <div class="success-icon">✓</div>
+      <h2>Receipt Generated Successfully!</h2>
+      <p id="successDetails">The donation receipt has been created and sent successfully.</p>
+      <button id="processAnother" class="btn btn-secondary">Process Another Donation</button>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Elements
+      const uploadArea = document.getElementById('uploadArea');
+      const fileInput = document.getElementById('fileInput');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const statusText = document.getElementById('statusText');
+      const resultsContainer = document.getElementById('resultsContainer');
+      const addressPreview = document.getElementById('addressPreview');
+      const generateReceiptBtn = document.getElementById('generateReceipt');
+      const generateManualReceiptBtn = document.getElementById('generateManualReceipt');
+      const successMessage = document.getElementById('successMessage');
+      const processAnotherBtn = document.getElementById('processAnother');
+      const successDetails = document.getElementById('successDetails');
+      
+      // Mode switching
+      const modeButtons = document.querySelectorAll('.mode-btn');
+      const modeSections = document.querySelectorAll('.mode-section');
+      
+      modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Update active button
+          modeButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          // Show corresponding section
+          const targetMode = btn.getAttribute('data-mode');
+          modeSections.forEach(section => {
+            section.classList.remove('active');
+          });
+          document.getElementById(targetMode + 'Mode').classList.add('active');
+        });
+      });
+      
+      // Contact method selection for both forms
+      function setupContactMethods(containerSelector) {
+        const container = document.querySelector(containerSelector);
+        const contactMethods = container.querySelectorAll('.contact-method');
+        const radioButtons = container.querySelectorAll('input[type="radio"]');
+        
+        contactMethods.forEach(method => {
+          method.addEventListener('click', () => {
+            // Unselect all methods
+            contactMethods.forEach(m => m.classList.remove('selected'));
+            container.querySelectorAll('.contact-fields').forEach(f => f.classList.remove('active'));
+            
+            // Select clicked method
+            method.classList.add('selected');
+            const radio = method.querySelector('input[type="radio"]');
+            radio.checked = true;
+            method.querySelector('.contact-fields').classList.add('active');
+          });
+        });
+        
+        radioButtons.forEach(radio => {
+          radio.addEventListener('change', () => {
+            const method = radio.closest('.contact-method');
+            contactMethods.forEach(m => m.classList.remove('selected'));
+            container.querySelectorAll('.contact-fields').forEach(f => f.classList.remove('active'));
+            
+            method.classList.add('selected');
+            method.querySelector('.contact-fields').classList.add('active');
+          });
+        });
+      }
+      
+      setupContactMethods('#manualMode');
+      setupContactMethods('#resultsContainer');
+      
+      // Upload area click handler
+      uploadArea.addEventListener('click', () => fileInput.click());
+      
+      // Drag and drop handlers
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.backgroundColor = '#d6eaf8';
+        uploadArea.style.borderColor = '#2980b9';
+      });
+      
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.backgroundColor = '#e8f4fe';
+        uploadArea.style.borderColor = '#3498db';
+      });
+      
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.backgroundColor = '#e8f4fe';
+        uploadArea.style.borderColor = '#3498db';
+        
+        if (e.dataTransfer.files.length) {
+          processImage(e.dataTransfer.files[0]);
+        }
+      });
+      
+      // File input change handler
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+          processImage(e.target.files[0]);
+        }
+      });
+      
+      // Process image using Tesseract.js
+      function processImage(file) {
+        // Show progress UI
+        uploadArea.classList.add('hidden');
+        progressContainer.classList.remove('hidden');
+        statusText.textContent = "Initializing OCR engine...";
+        
+        Tesseract.recognize(
+          file,
+          'eng', // English language
+          {
+            logger: progress => {
+              if (progress.status === 'recognizing text') {
+                const percentage = Math.round(progress.progress * 100);
+                progressBar.style.width = `${percentage}%`;
+                statusText.textContent = `Processing: ${percentage}%`;
+              } else if (progress.status === 'loading tesseract core') {
+                statusText.textContent = "Loading OCR engine...";
+              } else if (progress.status === 'initializing tesseract') {
+                statusText.textContent = "Initializing...";
+              } else if (progress.status === 'loading language traineddata') {
+                statusText.textContent = "Loading language data...";
+              }
+            }
+          }
+        ).then(result => {
+          // Process OCR results
+          const text = result.data.text;
+          
+          // Hide progress, show results
+          progressContainer.classList.add('hidden');
+          resultsContainer.classList.remove('hidden');
+          
+          // Parse text and pre-fill form
+          parseTextAndFillForm(text);
+        }).catch(err => {
+          console.error('OCR Error:', err);
+          statusText.textContent = 'Error processing image. Please try again.';
+          setTimeout(() => {
+            progressContainer.classList.add('hidden');
+            uploadArea.classList.remove('hidden');
+          }, 3000);
+        });
+      }
+      
+      // Enhanced text parsing for multiple formats
+      function parseTextAndFillForm(text) {
+        console.log("OCR Text:", text);
+        
+        // Format detection
+        const isDAF = /DAFgiving360|DAFgiving|Dargiving360/i.test(text);
+        const isFidelity = /Fidelity Charitable/i.test(text);
+        
+        // Name extraction
+        let name = "Donor Name";
+        
+        // DAFgiving360 name extraction
+        if (isDAF) {
+          const ackMatch = text.match(/Acknowledgment\s*[\s\S]*?([A-Z][a-z]+ [A-Z][a-z]+)/i);
+          if (ackMatch && ackMatch[1]) {
+            name = ackMatch[1].trim();
+          } else {
+            const recMatch = text.match(/recommended by\s+([A-Z][a-z]+ [A-Z][a-z]+)/i);
+            if (recMatch && recMatch[1]) {
+              name = recMatch[1].trim();
+            }
+          }
+        } 
+        // Fidelity name extraction
+        else if (isFidelity) {
+          // Look for the actual name pattern in the address line
+          const nameMatch = text.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+(?:\s+[A-Z][a-z]+)*)\s*,\s*\d+/i);
+          if (nameMatch && nameMatch[1]) {
+            name = nameMatch[1].trim();
+          } 
+          // Fallback: look for the fund name
+          else {
+            const fundMatch = text.match(/recommended by\s+the\s+([\w\s-]+)\s+Fund/i);
+            if (fundMatch && fundMatch[1]) {
+              name = fundMatch[1].trim() + " Fund";
+            }
+          }
+        }
+        // Generic name extraction
+        else {
+          const namePatterns = [
+            /recommended by\s+([A-Z][a-z]+ [A-Z][a-z]+)/i,
+            /donation from\s+([A-Z][a-z]+ [A-Z][a-z]+)/i,
+            /Acknowledgment\s*[\s\S]*?([A-Z][a-z]+ [A-Z][a-z]+)/i
+          ];
+          
+          for (const pattern of namePatterns) {
+            const match = text.match(pattern);
+            if (match && match[1]) {
+              name = match[1].trim();
+              break;
+            }
+          }
+        }
+        
+        // Amount extraction
+        let amount = "0.00";
+        const amountPatterns = [
+          /\$([\d,]+\.\d{2})/,
+          /amount of\s*\$([\d,]+\.\d{2})/i,
+          /check for\s*\$([\d,]+\.\d{2})/i,
+          /grant in the amount of\s*\$([\d,]+\.\d{2})/i
+        ];
+        
+        for (const pattern of amountPatterns) {
+          const match = text.match(pattern);
+          if (match && match[1]) {
+            amount = match[1];
+            break;
+          }
+        }
+        
+        // Date extraction
+        let date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format for date input
+        const datePatterns = [
+          /([A-Z][a-z]+ \d{1,2},? \d{4})/, // July 25, 2025
+          /(\d{1,2}\/\d{1,2}\/\d{4})/     // 07/25/2025
+        ];
+        
+        for (const pattern of datePatterns) {
+          const match = text.match(pattern);
+          if (match) {
+            const dateObj = new Date(match[0]);
+            if (!isNaN(dateObj)) {
+              date = dateObj.toISOString().split('T')[0];
+            }
+            break;
+          }
+        }
+        
+        // Enhanced address extraction
+        let address = "";
+        let addressContext = "No address found in text";
+        
+        // DAFgiving360 address extraction
+        if (isDAF) {
+          const addrMatch = text.match(/Address\s*[\s\S]*?(\d+ [A-Z][a-z]+ [A-Z][a-z]+(?:\n|,)[^,]+,\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?)/i);
+          if (addrMatch) {
+            address = addrMatch[1].replace(/\n/g, ' ').trim();
+            addressContext = "DAFgiving360 address found:\n" + addrMatch[1];
+          }
+        } 
+        // Fidelity address extraction
+        else if (isFidelity) {
+          const addrMatch = text.match(/send it to the following address[^]*?\n\s*([\s\S]+?)\n\n/i);
+          if (addrMatch) {
+            address = addrMatch[1].replace(/\n/g, ' ').trim();
+            addressContext = "Fidelity address found:\n" + addrMatch[1];
+          } else {
+            const addrMatch2 = text.match(/(\d+ [A-Z][a-z]+ [A-Z][a-z]+(?:,|\.)[^,]+,\s*[A-Z]{2}\s*\d{5})/);
+            if (addrMatch2) {
+              address = addrMatch2[1].trim();
+              addressContext = "Address pattern found:\n" + addrMatch2[1];
+            }
+          }
+        }
+        // Generic address extraction
+        else {
+          const addrPattern = /(\d+ [A-Z][a-z]+ [A-Z][a-z]+(?:,|\.)[^,]+,\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?)/;
+          const addrMatch = text.match(addrPattern);
+          if (addrMatch) {
+            address = addrMatch[1].trim();
+            addressContext = "Address pattern found:\n" + addrMatch[1];
+          } else {
+            const zipMatch = text.match(/\b\d{5}(?:-\d{4})?\b/);
+            if (zipMatch) {
+              const zipIndex = text.indexOf(zipMatch[0]);
+              const startIndex = Math.max(0, zipIndex - 100);
+              const endIndex = Math.min(text.length, zipIndex + 50);
+              addressContext = "Address context found near ZIP code:\n" + 
+                              text.substring(startIndex, endIndex);
+              
+              const context = text.substring(startIndex, endIndex);
+              const lines = context.split('\n');
+              address = lines.slice(0, 2).join(', ').replace(/\s+/g, ' ');
+            }
+          }
+        }
+        
+        // Format address for display
+        if (address) {
+          address = address
+            .replace(/\s+/g, ' ')
+            .replace(/(\d{5})\D*$/, '$1');
+        }
+        
+        // Display address preview
+        addressPreview.textContent = addressContext;
+        
+        // Fill form fields
+        document.getElementById('donorName').value = name;
+        document.getElementById('donationAmount').value = amount;
+        document.getElementById('donationDate').value = date;
+        document.getElementById('donorAddress').value = address;
+        
+        // If we found an address, pre-select the mail option
+        if (address.trim()) {
+          document.getElementById('scannedContactMail').click();
+        }
+      }
+      
+      // Generate receipt handler (for scanned documents)
+      generateReceiptBtn.addEventListener('click', () => {
+        const selectedMethod = document.querySelector('input[name="scannedContactMethod"]:checked');
+        if (!selectedMethod) {
+          alert('Please select how to deliver the receipt');
+          return;
+        }
+        
+        const formData = {
+          donorName: document.getElementById('donorName').value,
+          donationAmount: document.getElementById('donationAmount').value,
+          donationDate: document.getElementById('donationDate').value
+        };
+        
+        if (selectedMethod.value === 'email') {
+          formData.donorEmail = document.getElementById('donorEmail').value;
+          if (!formData.donorEmail) {
+            alert('Please enter the donor\'s email address');
+            return;
+          }
+        } else {
+          formData.donorAddress = document.getElementById('donorAddress').value;
+          formData.recipientEmail = document.getElementById('recipientEmail').value;
+          if (!formData.donorAddress) {
+            alert('Please enter the donor\'s address');
+            return;
+          }
+        }
+        
+        generateReceipt(formData, selectedMethod.value);
+      });
+      
+      // Generate manual receipt handler
+      generateManualReceiptBtn.addEventListener('click', () => {
+        const selectedMethod = document.querySelector('input[name="contactMethod"]:checked');
+        if (!selectedMethod) {
+          alert('Please select how to deliver the receipt');
+          return;
+        }
+        
+        const formData = {
+          donorName: document.getElementById('manualDonorName').value,
+          donationAmount: document.getElementById('manualDonationAmount').value,
+          donationDate: document.getElementById('manualDonationDate').value
+        };
+        
+        if (selectedMethod.value === 'email') {
+          formData.donorEmail = document.getElementById('manualDonorEmail').value;
+          if (!formData.donorEmail) {
+            alert('Please enter the donor\'s email address');
+            return;
+          }
+        } else {
+          formData.donorAddress = document.getElementById('manualDonorAddress').value;
+          formData.recipientEmail = document.getElementById('manualRecipientEmail').value;
+          if (!formData.donorAddress) {
+            alert('Please enter the donor\'s address');
+            return;
+          }
+        }
+        
+        generateReceipt(formData, selectedMethod.value);
+      });
+      
+      // Common receipt generation function
+      function generateReceipt(formData, deliveryMethod) {
+        if (!formData.donorName || !formData.donationAmount || !formData.donationDate) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        
+        // Email validation if needed
+        if (deliveryMethod === 'email' && formData.donorEmail) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(formData.donorEmail)) {
+            alert('Please enter a valid donor email address');
+            return;
+          }
+        }
+        
+        // Disable buttons during processing
+        generateReceiptBtn.disabled = true;
+        generateManualReceiptBtn.disabled = true;
+        generateReceiptBtn.textContent = 'Generating Receipt...';
+        generateManualReceiptBtn.textContent = 'Generating Receipt...';
+        
+        // Call server function to generate receipt
+        google.script.run
+          .withSuccessHandler((result) => {
+            // Hide current sections
+            document.getElementById('scanMode').classList.remove('active');
+            document.getElementById('manualMode').classList.remove('active');
+            resultsContainer.classList.add('hidden');
+            
+            // Show success message
+            if (deliveryMethod === 'email') {
+              successDetails.innerHTML = `The donation receipt has been <strong>emailed directly to ${formData.donorEmail}</strong>.`;
+            } else {
+              successDetails.innerHTML = `The donation receipt has been generated and <strong>emailed to ${formData.recipientEmail || 'shannon@havensafe.org'}</strong> for mailing to the donor's address.`;
+            }
+            successMessage.classList.remove('hidden');
+          })
+          .withFailureHandler(err => {
+            console.error('Error generating receipt:', err);
+            alert('Error generating receipt: ' + err.message);
+            
+            // Re-enable buttons
+            generateReceiptBtn.disabled = false;
+            generateManualReceiptBtn.disabled = false;
+            generateReceiptBtn.textContent = 'Generate & Send Receipt';
+            generateManualReceiptBtn.textContent = 'Generate & Send Receipt';
+          })
+          .createReceiptFromForm(formData);
+      }
+      
+      // Process another donation handler
+      processAnotherBtn.addEventListener('click', () => {
+        successMessage.classList.add('hidden');
+        
+        // Reset to scan mode
+        modeButtons.forEach(b => b.classList.remove('active'));
+        modeButtons[0].classList.add('active');
+        modeSections.forEach(section => section.classList.remove('active'));
+        document.getElementById('scanMode').classList.add('active');
+        
+        uploadArea.classList.remove('hidden');
+        document.getElementById('fileInput').value = '';
+        document.getElementById('donationForm').reset();
+        document.getElementById('manualForm').reset();
+        
+        // Reset default emails
+        document.getElementById('recipientEmail').value = 'shannon@havensafe.org';
+        document.getElementById('manualRecipientEmail').value = 'shannon@havensafe.org';
+        
+        // Re-enable buttons
+        generateReceiptBtn.disabled = false;
+        generateManualReceiptBtn.disabled = false;
+        generateReceiptBtn.textContent = 'Generate & Send Receipt';
+        generateManualReceiptBtn.textContent = 'Generate & Send Receipt';
+        
+        // Clear contact method selections
+        document.querySelectorAll('.contact-method').forEach(m => m.classList.remove('selected'));
+        document.querySelectorAll('.contact-fields').forEach(f => f.classList.remove('active'));
+        document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+      });
+    });
+  </script>
+</body>
+</html>
