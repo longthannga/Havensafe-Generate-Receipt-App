@@ -13,12 +13,6 @@ A web-based tool to **process donation receipts** using **OCR (Tesseract.js)** o
   * 📄 **Scan Document**: Upload a scanned JPG/PNG donation letter and extract donor details using OCR.
   * ✍️ **Manual Entry**: Enter donor details directly.
 
-* **Supported Formats**:
-
-  * Fidelity Charitable (with "send it to the following address")
-  * DAFgiving360 (with "Acknowledgment" and "Address" sections)
-  * Generic donation letters with donor name, amount, date, and address
-
 * **Smart OCR Parsing**: Automatically extracts donor name, amount, date, and address.
 
 * **Contact Delivery Options**:
